@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-
-set(BUILDABLE AOCDay-1)
+set(BUILDABLE AOCDay-2)
 add_executable(${BUILDABLE} main.cpp)
 add_custom_command(
         TARGET ${BUILDABLE} POST_BUILD
