@@ -2,6 +2,7 @@
 #include <utility>
 #include <vector>
 #include <fstream>
+#include <chrono>
 #include <sstream>
 
 inline void readEntries(std::string_view filepath, std::vector<std::string> &entries) {
@@ -42,6 +43,13 @@ int main() {
     std::vector<std::string> entries;
 
     readEntries(filepath, entries);
+
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
+    auto start = high_resolution_clock::now();
 
     auto zero_counts = std::vector<unsigned int>(entries[0].size());
     auto one_counts = std::vector<unsigned int>(entries[0].size());
@@ -118,5 +126,9 @@ int main() {
     std::cout << "CO2 rating: " << carbon_dioxide_rating << std::endl;
     std::cout <<  "Life support rating: " << oxygen_rating * carbon_dioxide_rating << std::endl;
 
+    auto end = high_resolution_clock::now();
+    /* Getting number of milliseconds as a double. */
+    duration<double, std::milli> ms_double = end - start;
+    std::cout << "Time taken: " << ms_double.count() << "ms";
     return 0;
 }
