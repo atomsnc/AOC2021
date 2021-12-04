@@ -2,8 +2,7 @@
 #include <utility>
 #include <vector>
 #include <fstream>
-
-#define BOARD_SIZE 5
+#include <chrono>
 
 class Cell {
 public:
@@ -115,6 +114,14 @@ int main() {
     std::vector<Table> tables, tables_2;
 
     readCallsAndTables(filepath, calls, tables);
+
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
+    auto start = high_resolution_clock::now();
+
     tables_2 = std::vector<Table>(tables);
 
     //    Part 1
@@ -184,6 +191,11 @@ int main() {
         }
     }
     std::cout << "Final score last table: " << unmarked_sum * winning_calls.back() << std::endl;
+
+    auto end = high_resolution_clock::now();
+    /* Getting number of milliseconds as a double. */
+    duration<double, std::milli> ms_double = end - start;
+    std::cout << "Time taken: " << ms_double.count() << "ms";
 
     return 0;
 
