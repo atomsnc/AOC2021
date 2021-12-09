@@ -22,10 +22,13 @@ void readEntries(std::string_view filepath, Map &heightmap) {
     }
 }
 
+
 class Point {
 public:
     int x, y, value;
     Map *heightmap;
+    /* one copy shared across all points */
+    static std::stringstream stringstream;
 
     Point() = default;
 
@@ -37,8 +40,9 @@ public:
         this->heightmap = heightmap;
     };
 
-    std::vector<int> getNeightbors() {
+    [[nodiscard]] std::vector<int> getNeightbors() const {
         std::vector<int> neighbors;
+        neighbors.reserve(4);
         /* Get left */
         if (x > 0) {
             neighbors.emplace_back((*heightmap)[y][x - 1]);
@@ -61,36 +65,36 @@ public:
         return neighbors;
     }
 
-    std::vector<std::string> getBasinNeighborsAsCoordinates() {
+    [[nodiscard]] std::vector<std::string> getBasinNeighborsAsCoordinates() const {
         std::vector<std::string> coordinates;
         coordinates.reserve(4);
-        std::stringstream coordinate;
+        std::stringstream &stream = Point::stringstream;
         /* Get left */
         if (x > 0) {
-            coordinate << x - 1 << ',' << y;
-            coordinates.emplace_back(coordinate.str());
-            coordinate.str(std::string());
+            stream.str(std::string());
+            stream << x - 1 << ',' << y;
+            coordinates.emplace_back(stream.str());
         }
         /* Get right */
         if (x < (*heightmap)[y].size() - 1) {
-            coordinate << x + 1 << ',' << y;
-            coordinates.emplace_back(coordinate.str());
-            coordinate.str(std::string());
+            stream.str(std::string());
+            stream << x + 1 << ',' << y;
+            coordinates.emplace_back(stream.str());
         }
         /* Get up */
         if (y > 0) {
-            coordinate << x << ',' << y - 1;
-            coordinates.emplace_back(coordinate.str());
-            coordinate.str(std::string());
+            stream.str(std::string());
+            stream << x << ',' << y - 1;
+            coordinates.emplace_back(stream.str());
         }
         /* Get down */
         if (y < heightmap->size() - 1) {
-            coordinate << x << ',' << y + 1;
-            coordinates.emplace_back(coordinate.str());
-            coordinate.str(std::string());
+            stream.str(std::string());
+            stream << x << ',' << y + 1;
+            coordinates.emplace_back(stream.str());
         }
         if (coordinates.size() < 2) {
-            coordinate << x << ',' << y;
+            stream << x << ',' << y;
             throw std::runtime_error("There should be at least 2 neighbors for a point");
         }
         return coordinates;
@@ -125,6 +129,8 @@ int calculateFloodFillArea(Point &lowest_point, std::unordered_map<std::string, 
 
 }
 
+std::stringstream Point::stringstream = std::stringstream();
+
 int main() {
     std::string filepath = "input.txt";
     Map heightmap;
@@ -141,10 +147,10 @@ int main() {
     auto start = high_resolution_clock::now();
 
     std::unordered_map<std::string, Point> points;
-
+    std::stringstream coordinate;
     for (int y = 0; y < heightmap.size(); y++) {
         for (int x = 0; x < heightmap[y].size(); x++) {
-            std::stringstream coordinate;
+            coordinate.str(std::string());
             coordinate << x << ',' << y;
             points.insert({coordinate.str(), Point(&heightmap, x, y, heightmap[y][x])});
         }
