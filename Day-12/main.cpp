@@ -4,9 +4,22 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <chrono>
-
+#include <sstream>
 
 using Path = std::vector<std::string>;
+
+namespace std {
+    template<>
+    struct hash<Path> {
+        std::size_t operator()(const Path &path) const {
+            std::stringstream ss;
+            for (auto &element: path) {
+                ss << element;
+            }
+            return std::hash<std::string>{}(ss.str());
+        }
+    };
+}
 
 inline void split(const std::string &string, char delim, std::vector<std::string> &entries) {
     size_t start;
@@ -57,9 +70,10 @@ int inline countElementInVector(std::vector<std::string> &vector, const std::str
 
 void explore(const std::string &token,
              std::unordered_map<std::string, std::unordered_set<std::string>> &links,
-        /* We send out a copy of the vector as the paths keep on diverging */
-             Path current_path, std::vector<Path> &total_paths, const std::string &single_double) {
+             Path &current_path, std::vector<Path> &total_paths, const std::string &single_double) {
 
+    /* We emulate a path stack using a vector */
+    /* Push at start */
     current_path.emplace_back(token);
 
     if (token == "end") {
@@ -75,6 +89,33 @@ void explore(const std::string &token,
             }
         }
     }
+    /* Pop at end */
+    current_path.pop_back();
+}
+
+void explore(const std::string &token,
+             std::unordered_map<std::string, std::unordered_set<std::string>> &links,
+             Path &current_path, std::unordered_set<Path> &total_paths, const std::string &single_double) {
+
+    /* We emulate a path stack using a vector */
+    /* Push at start */
+    current_path.emplace_back(token);
+
+    if (token == "end") {
+        total_paths.insert(current_path);
+    } else {
+        for (auto &link: links[token]) {
+            if (
+                    elementNOTExistsInVector(current_path, link)
+                    || allUpper(link)
+                    || (link == single_double && countElementInVector(current_path, link) < 2)
+                    ) {
+                explore(link, links, current_path, total_paths, single_double);
+            }
+        }
+    }
+    /* Pop at end */
+    current_path.pop_back();
 }
 
 int main() {
@@ -90,30 +131,29 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
+    Path current_path;
+
     // Part 1
     std::vector<Path> total_paths;
-    explore("start", links, std::vector<std::string>(), total_paths, std::string());
+
+    explore("start", links, current_path, total_paths, std::string());
 
     std::cout << "Total paths: " << total_paths.size() << std::endl;
 
 
     // Part 2
-    total_paths.clear();
+    std::unordered_set<Path> unique_paths;
 
-    for (auto& [link, neighbors] : links) {
+    for (auto&[link, neighbors]: links) {
         if (link != "start" && link != "end" && allLower(link)) {
-            explore("start", links, std::vector<std::string>(), total_paths, link);
+            explore("start", links, current_path, unique_paths, link);
         }
     }
 
-    std::sort(total_paths.begin(), total_paths.end());
-    total_paths.erase(std::unique(total_paths.begin(), total_paths.end()), total_paths.end());
-
-    std::cout << "Total paths: " << total_paths.size() << std::endl;
+    std::cout << "Total paths: " << unique_paths.size() << std::endl;
 
     auto end = high_resolution_clock::now();
     /* Getting number of milliseconds as a double. */
     duration<double, std::milli> ms_double = end - start;
     std::cout << "Time taken: " << ms_double.count() << "ms";
-
 }
