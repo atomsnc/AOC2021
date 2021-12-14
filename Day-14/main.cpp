@@ -57,7 +57,7 @@ int main() {
     }
 
     /* This is needed because the last character is counted n - 1 times
-     * as we just take the first char from all the pair orderings */
+     * as we just count the first char from all the pair orderings */
     char last_char = polymer.back();
 
     for (int step = 0; step < 40; step++) {
