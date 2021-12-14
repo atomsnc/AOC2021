@@ -50,6 +50,7 @@ int main() {
     readEntries(filepath, polymer, pair_insertions);
 
     std::unordered_map<std::string, unsigned long> pair_collection;
+    std::unordered_map<std::string, unsigned long> new_pairs;
 
     for (auto first = polymer.begin(), second = ++polymer.begin(); second != polymer.end(); first++, second++) {
         std::string pair = std::string() + *first + *second;
@@ -61,7 +62,7 @@ int main() {
     char last_char = polymer.back();
 
     for (int step = 0; step < 40; step++) {
-        std::unordered_map<std::string, unsigned long> new_pairs;
+        new_pairs.clear();
         for (auto &[pair, count]: pair_collection) {
             auto insertion_it = pair_insertions.find(pair);
             if (insertion_it != pair_insertions.end()) {
@@ -73,9 +74,7 @@ int main() {
             }
         }
         pair_collection.clear();
-        for (auto &[pair, count]: new_pairs) {
-            pair_collection[pair] = count;
-        }
+        pair_collection = new_pairs;
     }
 
     unsigned long smallest_character_count = std::numeric_limits<unsigned long>::max();
@@ -83,12 +82,10 @@ int main() {
     char smallest_char, largest_char;
 
     std::unordered_map<char, unsigned long> character_counts;
-    std::for_each(pair_collection.begin(), pair_collection.end(),
-                  [&character_counts](const std::unordered_map<std::string, unsigned long>::value_type &element) {
-                      char c = element.first[0];
-                      unsigned long count = element.second;
-                      character_counts[c] += count;
-                  });
+    for (auto &[pair, count] : pair_collection) {
+        char c = pair[0];
+        character_counts[c] += count;
+    }
 
     for (auto &[c, count]: character_counts) {
         if (count < smallest_character_count) {
