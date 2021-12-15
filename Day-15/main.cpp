@@ -8,51 +8,62 @@
 #include <optional>
 #include <chrono>
 
-static int GRID_SIZE_X = 0;
-static int GRID_SIZE_Y = 0;
+static uint32_t GRID_SIZE_X = 0;
+static uint32_t GRID_SIZE_Y = 0;
+
+class Point {
+public:
+    uint32_t x, y;
+
+    Point() = default;
+    Point(uint32_t x, uint32_t y): x(x), y(y) {}
+
+    bool operator==(const Point& point) const
+    {
+        return (this->x == point.x && this->y == point.y);
+    }
+};
+
+namespace std {
+    template <>
+    struct hash<Point> {
+        std::size_t operator()(const Point &point) const {
+            return static_cast<uint64_t>(point.x) << 32 | point.y;
+        }
+    };
+}
 
 class Chitcon {
 public:
 
-    int x, y, risk;
-    /* one copy shared across all points */
-    static std::stringstream stringstream;
+    Point point;
+    int risk;
 
     Chitcon() = default;
-
-    Chitcon(int x, int y, int risk) : x(x), y(y), risk(risk) {
+    Chitcon(uint32_t x, uint32_t y, int risk) : point(x, y), risk(risk) {
         if (risk < 0 || risk > 9) {
             throw std::runtime_error("Octopus energy level cannot be smaller than 0 or greater than 9.");
         }
     }
 
-    [[nodiscard]] std::vector<std::string> getNeighborsAsCoordinates(int max_x, int max_y) const {
-        std::vector<std::string> coordinates;
-        coordinates.reserve(6);
-        std::stringstream &stream = Chitcon::stringstream;
+    [[nodiscard]] std::vector<Point> getNeighborsAsCoordinates(uint32_t max_x, uint32_t max_y) const {
+        std::vector<Point> coordinates;
+        coordinates.reserve(4);
         /* Get left */
-        if (x > 0) {
-            stream.str(std::string());
-            stream << x - 1 << ',' << y;
-            coordinates.emplace_back(stream.str());
+        if (point.x > 0) {
+            coordinates.emplace_back(Point(point.x - 1, point.y));
         }
         /* Get up */
-        if (y > 0) {
-            stream.str(std::string());
-            stream << x << ',' << y - 1;
-            coordinates.emplace_back(stream.str());
+        if (point.y > 0) {
+            coordinates.emplace_back(Point(point.x, point.y - 1));
         }
         /* Get right */
-        if (x < max_x - 1) {
-            stream.str(std::string());
-            stream << x + 1 << ',' << y;
-            coordinates.emplace_back(stream.str());
+        if (point.x < max_x - 1) {
+            coordinates.emplace_back(Point(point.x + 1, point.y));
         }
         /* Get down */
-        if (y < max_y - 1) {
-            stream.str(std::string());
-            stream << x << ',' << y + 1;
-            coordinates.emplace_back(stream.str());
+        if (point.y < max_y - 1) {
+            coordinates.emplace_back(Point(point.x, point.y + 1));
         }
         if (coordinates.size() < 2) {
             throw std::runtime_error("There should be at least 2 neighbors for a point");
@@ -61,26 +72,23 @@ public:
     }
 };
 
-void printChitconGrid(std::unordered_map<std::string, Chitcon> &chitcon_map, int max_x, int max_y) {
+void printChitconGrid(std::unordered_map<Point, Chitcon> &chitcon_map, uint32_t max_x, uint32_t max_y) {
     std::stringstream stream;
     for (int y = 0; y < max_y; y++) {
         for (int x = 0; x < max_x; x++) {
-            stream.str(std::string());
-            stream << x << ',' << y;
-
-            std::cout << chitcon_map[stream.str()].risk;
+            std::cout << chitcon_map[Point(x, y)].risk;
         }
         std::cout << std::endl;
     }
     std::cout << std::endl;
 }
 
-void readEntries(std::string_view filepath, std::vector<std::vector<int>> &map) {
+void readEntries(std::string_view filepath, std::vector<std::vector<uint32_t>> &map) {
     std::ifstream file(filepath.data());
     std::string line;
 
     while (std::getline(file, line)) {
-        std::vector<int> entries;
+        std::vector<uint32_t> entries;
         for (auto &c: line) {
             entries.emplace_back(c - '0');
         }
@@ -89,13 +97,13 @@ void readEntries(std::string_view filepath, std::vector<std::vector<int>> &map) 
 }
 
 std::optional<int>
-getShortestPathCost(std::unordered_map<std::string, Chitcon> &chitcon_map, std::string &start, std::string &end, int max_x, int max_y) {
-    auto compare = [](const std::pair<std::string, int> &lhs, const std::pair<std::string, int> &rhs) {
+getShortestPathCost(std::unordered_map<Point, Chitcon> &chitcon_map, Point &start, Point &end, uint32_t max_x, uint32_t max_y) {
+    auto compare = [](const std::pair<Point, int> &lhs, const std::pair<Point, int> &rhs) {
         return lhs.second > rhs.second;
     };
 
-    std::priority_queue<std::pair<std::string, int>, std::vector<std::pair<std::string, int>>, decltype(compare)> frontier_list;
-    std::unordered_set<std::string> visited;
+    std::priority_queue<std::pair<Point, int>, std::vector<std::pair<Point, int>>, decltype(compare)> frontier_list;
+    std::unordered_set<Point> visited;
 
     frontier_list.emplace(start, 0);
 
@@ -123,42 +131,31 @@ getShortestPathCost(std::unordered_map<std::string, Chitcon> &chitcon_map, std::
     return {};
 }
 
-std::stringstream Chitcon::stringstream = std::stringstream();
-
 int main() {
     std::string filepath = "input.txt";
-    std::vector<std::vector<int>> map;
+    std::vector<std::vector<uint32_t>> map;
     readEntries(filepath, map);
 
     GRID_SIZE_Y = map.size();
     GRID_SIZE_X = map[0].size();
 
-    std::unordered_map<std::string, Chitcon> chitcon_map;
-    std::unordered_map<std::string, Chitcon> chitcon_map_tiled;
+    std::unordered_map<Point, Chitcon> chitcon_map;
+    std::unordered_map<Point, Chitcon> chitcon_map_tiled;
 
-    std::stringstream stream;
-
-    for (int y = 0; y < GRID_SIZE_Y; y++) {
-        for (int x = 0; x < GRID_SIZE_X; x++) {
-            stream.str(std::string());
-            stream << x << ',' << y;
-
-            chitcon_map.emplace(stream.str(), Chitcon(x, y, map[y][x]));
+    for (uint32_t y = 0; y < GRID_SIZE_Y; y++) {
+        for (uint32_t x = 0; x < GRID_SIZE_X; x++) {
+            chitcon_map.emplace(Point(x, y), Chitcon(x, y, map[y][x]));
         }
     }
 
     // Repeat 5 times
-    for (int y = 0; y < GRID_SIZE_Y * 5; y++) {
-        for (int x = 0; x < GRID_SIZE_X * 5; x++) {
-            stream.str(std::string());
-            stream << x << ',' << y;
+    for (uint32_t y = 0; y < GRID_SIZE_Y * 5; y++) {
+        for (uint32_t x = 0; x < GRID_SIZE_X * 5; x++) {
 
             int risk = map[y % GRID_SIZE_Y][x % GRID_SIZE_X] + (x / GRID_SIZE_X) + (y / GRID_SIZE_Y);
-            if (risk >= 10) {
-                risk = risk - (9 * (risk / 10));
-            }
+            risk = risk - (9 * (risk / 10));
 
-            chitcon_map_tiled.emplace(stream.str(), Chitcon(x, y, risk));
+            chitcon_map_tiled.emplace(Point(x, y), Chitcon(x, y, risk));
         }
     }
 
@@ -169,10 +166,8 @@ int main() {
 
     auto start = high_resolution_clock::now();
 
-    std::string start_point = "0,0";
-    stream.str(std::string());
-    stream << GRID_SIZE_X - 1 << ',' << GRID_SIZE_Y - 1;
-    std::string end_point = stream.str();
+    Point start_point(0, 0);
+    Point end_point(GRID_SIZE_X - 1, GRID_SIZE_Y - 1);
 
     // Part 1
     auto risk = getShortestPathCost(chitcon_map, start_point, end_point, GRID_SIZE_Y, GRID_SIZE_Y);
@@ -181,9 +176,7 @@ int main() {
     std::cout << "Lowest total risk: " << *risk << std::endl;
 
     // Part 2
-    stream.str(std::string());
-    stream << (GRID_SIZE_X * 5) - 1 << ',' << (GRID_SIZE_Y * 5) - 1;
-    end_point = stream.str();
+    end_point = Point((GRID_SIZE_X * 5) - 1, (GRID_SIZE_Y * 5) - 1);
 
     risk = getShortestPathCost(chitcon_map_tiled, start_point, end_point, GRID_SIZE_Y * 5, GRID_SIZE_Y * 5);
     if (!risk.has_value()) throw std::runtime_error("No path found");
